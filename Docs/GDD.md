@@ -6,7 +6,7 @@
 | **Team** | Roy Kalfon |
 | **Genre** | Arcade / paddle-and-ball brick breaker (Breakout-style) |
 | **Target platform** | PC (Windows standalone) + Android (mobile build) |
-| **Engine / Unity version** | Unity 6 (6000.x LTS), URP, 2D |
+| **Engine / Unity version** | Unity 6 (6000.3.20f1 LTS), URP, 2D |
 | **Orientation & reference resolution** | Portrait, 720 × 1280 reference |
 | **Expected session length** | 1–8 minutes per run (3 lives), designed for "one more try" replays |
 | **Document version** | v0.1 — 2026-09-03 |
