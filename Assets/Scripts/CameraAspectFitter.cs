@@ -31,6 +31,16 @@ namespace Shatterline
             lastWidth = Screen.width;
             lastHeight = Screen.height;
 
+            // Screen dimensions can briefly read as 0 (e.g. the Game view
+            // hasn't laid out yet), which would otherwise produce a
+            // zero-area or NaN viewport rect and a camera that renders
+            // nothing ("No cameras rendering"). Skip and retry next frame.
+            if (Screen.width <= 0 || Screen.height <= 0)
+            {
+                cam.rect = new Rect(0f, 0f, 1f, 1f);
+                return;
+            }
+
             float windowAspect = (float)Screen.width / Screen.height;
             float scaleHeight = windowAspect / targetAspect;
 
