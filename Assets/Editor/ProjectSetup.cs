@@ -442,6 +442,7 @@ namespace ShatterlineEditor
 
             var col = go.AddComponent<BoxCollider2D>();
             col.sharedMaterial = physMat;
+            col.size = Vector2.one;
 
             go.AddComponent<Brick>();
             go.transform.localScale = new Vector3(0.9f, 0.4f, 1f);
@@ -466,6 +467,7 @@ namespace ShatterlineEditor
 
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
+            col.size = Vector2.one;
             go.transform.localScale = Vector3.one * 0.4f;
 
             go.AddComponent<PowerUpCapsule>();
