@@ -53,5 +53,9 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+# com.unity.test-framework.performance build-hook scratch files
+PerformanceTestRunInfo.json
+PerformanceTestRunSettings.json
+
 # Packages lock (keep tracked; comment out if you prefer to ignore)
 !/Packages/packages-lock.json
