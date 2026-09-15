@@ -9,7 +9,7 @@
 | **Engine / Unity version** | Unity 6 (6000.3.20f1 LTS), URP, 2D |
 | **Orientation & reference resolution** | Portrait, 720 × 1280 reference |
 | **Expected session length** | 1–8 minutes per run (3 lives), designed for "one more try" replays |
-| **Document version** | v0.1 — 2026-09-03 |
+| **Document version** | v0.3 — 2026-09-15 |
 
 ---
 
@@ -56,7 +56,7 @@ stateDiagram-v2
 - The ball travels at a constant speed per tier; only its direction vector changes on collision. Walls and bricks reflect it normally; the paddle reflects it using the fixed offset-from-centre formula in Pillar 1, so a hit near the edge always sends the ball off at a sharper angle than a hit near the centre.
 - A paddle hit is the *only* source of the ball's small speed increase (`+speedStepPerHit`, capped at `maxBallSpeed`) — bricks change the ball's direction and the player's score, never its speed.
 - Bricks come in two flavours: standard bricks break in 1 hit (worth `10 × row index` points), and tough bricks (top two rows) take 2 hits and visibly flash on the first hit.
-- **Scoring:** score increments the instant a brick's HP reaches zero, by that brick's fixed point value — never on hit, only on destroy.
+- **Scoring:** score increments the instant a brick's HP reaches zero, by that brick's fixed point value — never on hit, only on destroy. Row index counts from the bottom of the grid upward, so the tougher top rows are worth the most points.
 - **Power-ups:** every destroyed brick has a flat 12% chance to drop one pooled falling capsule (Widen Paddle, Slow Ball, or Multi-Ball). Catching it with the paddle applies the effect immediately; Widen Paddle and Slow Ball start a coroutine-driven duration timer that reverts the effect, while Multi-Ball immediately spawns two extra pooled balls.
 - **Failure:** the ball is lost the instant its position passes below the paddle's Y position while moving downward. Lives −1, then a 0.5 s freeze plays before the next serve so the loss reads clearly before play resumes.
 - Level clear triggers the instant the last breakable brick is destroyed (standard or tough — any indestructible border decoration, if used, never counts).
@@ -65,7 +65,7 @@ stateDiagram-v2
 
 | Parameter | What it controls | First guess |
 |---|---|---|
-| `paddleSpeed` | How fast the paddle tracks keyboard/touch input | 12 u/s |
+| `paddleSpeed` | How fast the paddle tracks keyboard/gamepad/touch input (mouse is absolute cursor-tracking, unaffected) | 12 u/s |
 | `ballBaseSpeed` | Ball speed at the start of every serve | 7 u/s |
 | `speedStepPerHit` | Speed added to the ball on each paddle hit | 0.15 u/s |
 | `maxBallSpeed` | Hard cap on ball speed regardless of hits | 12 u/s |
@@ -83,11 +83,12 @@ stateDiagram-v2
 
 | Action | Keyboard / Mouse | Gamepad | Touch |
 |---|---|---|---|
-| Move paddle | ←/→ or A/D, or mouse X position | Left stick / D-pad X | Drag anywhere on screen (paddle follows finger X) |
+| Move paddle | ←/→ or A/D (rate-based), or mouse cursor X (absolute — paddle tracks the cursor's world position directly, every frame, clamped to the playfield) | Left stick / D-pad X (rate-based) | Drag anywhere on screen — paddle follows the *relative* delta of the drag, not an absolute finger position |
 | Launch ball | Space / Left click | South button (A / Cross) | Tap anywhere |
 | Pause | Esc | Start button | Tap pause icon (top corner) |
 | Confirm (menus) | Space / Enter / Left click | South button | Tap |
 
+- Mouse and touch are deliberately different: mouse is absolute cursor-tracking (the paddle *is* wherever the cursor is, clamped to bounds), because a mouse cursor can't "cover the ball" or teleport unexpectedly the way a first finger-down would. Touch uses a relative drag delta specifically to avoid that first-touch teleport/cover problem. Keyboard and gamepad are rate-based (`paddleSpeed`-driven), unaffected by either.
 - Input is polled every frame via the Input System's action API in `Update`, but paddle movement is applied in `FixedUpdate` against the paddle's `Rigidbody2D`, so paddle motion stays in lock-step with the ball's physics step instead of racing a frame ahead of it.
 - A tap/click on a UI element (pause icon, menu button) is consumed by the UI event system for that frame and does not also register as a "launch ball" or paddle-drag input.
 - On the Game Over screen, input is locked out for 0.5 s after the screen appears, specifically so the tap that lost the last life can't also register as "restart" — a common cheap-restart bug in this genre.
@@ -172,7 +173,7 @@ graph TD
 1. **Object pooling** — falling power-up capsules and brick-break particle bursts are both pooled (a 6-capsule pool, a 12-particle-system pool). A single playthrough can break 50+ bricks in well under a minute; Instantiate/Destroy at that rate causes visible GC-spike stutter, and a dropped frame in a game whose entire challenge is precise paddle timing reads as an unfair death — exactly the kind of unfairness Pillar 2 rules out.
 2. **Coroutines** — the "3, 2, 1" serve countdown, the 0.5 s freeze after a lost ball, the 1.2 s auto-advance on level clear, and every power-up's duration timer (Widen Paddle and Slow Ball each run on an `IEnumerator` timer that reverts the effect and safely restarts itself if the same power-up is caught again) all live as coroutines on `GameManager` / `PaddleController` — one readable sequence per behaviour instead of hand-rolled `Update` timers.
 3. **Singletons** — `GameManager` and `AudioManager` are the project's only two singletons (a simple static-instance pattern, `DontDestroyOnLoad` only where scene-persistence is actually needed). Every other script talks to them instead of holding direct scene references, keeping `Brick`, `PowerUpSpawner`, and `UIManager` decoupled from each other.
-4. **Mobile build** — the input layer is written against the Input System's action-based API from day one (touch drag maps to the same "Move" action as keyboard/mouse), the Canvas uses *Scale With Screen Size*, and the project is actually built and hand-tested as an Android APK on the device named above — not assumed to work "because Unity is cross-platform."
+4. **Mobile build** — the input layer is written against the Input System's action-based API from day one (touch drag shares the same rate-based "Move" action as keyboard/gamepad; mouse gets its own absolute-position action since its control feel is fundamentally different), the Canvas uses *Scale With Screen Size*, and the project is actually built and hand-tested as an Android APK on the device named above — not assumed to work "because Unity is cross-platform."
 5. **ScriptableObject-driven config & levels** — `GameConfig` centralizes every number from the tuning table so none of it is a magic number buried in a script, and `LevelData` turns each level's brick layout into an asset rather than a hardcoded instantiation call, so adding a 6th level is "create one more asset," not "write more code."
 
 ---
@@ -189,7 +190,7 @@ graph TD
 - [x] Level-clear detection when all breakable bricks are gone
 - [x] Main Menu → Play → Game Over → Menu loop fully wired
 - [x] Bounce / break / game-over SFX
-- [ ] Builds and runs correctly on both Windows standalone and an Android device
+- [x] Builds and runs correctly on both Windows standalone and an Android device
 
 ### 8.2 Polish — if the MVP is done and playable
 
@@ -217,3 +218,4 @@ graph TD
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-09-03 | Initial draft |
+| v0.3 | 2026-09-15 | Design-review pass: fixed mouse paddle control to be absolute cursor-tracking instead of a relative drag like touch (§4 wording tightened to make the distinction unambiguous); documented the brick-scoring row-index direction (top rows score highest, §3); verified real Windows + Android player builds; wired the PC/Mobile URP quality presets as each platform's default quality level. |
