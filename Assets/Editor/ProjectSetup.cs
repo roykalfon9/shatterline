@@ -290,8 +290,14 @@ namespace ShatterlineEditor
                 .With("Positive", "<Keyboard>/rightArrow");
             move.AddBinding("<Gamepad>/leftStick/x");
             move.AddBinding("<Gamepad>/dpad/x");
-            move.AddBinding("<Mouse>/delta/x").WithProcessor("scale(factor=0.08)");
             move.AddBinding("<Touchscreen>/primaryTouch/delta/x").WithProcessor("scale(factor=0.08)");
+
+            // Mouse is absolute cursor-tracking (GDD §4), not a relative drag
+            // like touch, so it gets its own action rather than sharing Move's
+            // rate-based semantics. Raw screen-space X; PaddleController
+            // converts to world space and only trusts it while it's moving.
+            InputAction mouseX = gameplay.AddAction("MouseX", InputActionType.Value);
+            mouseX.AddBinding("<Mouse>/position/x");
 
             InputAction launch = gameplay.AddAction("Launch", InputActionType.Button);
             launch.AddBinding("<Keyboard>/space");

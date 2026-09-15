@@ -14,7 +14,12 @@ namespace Shatterline
 
         Rigidbody2D rb;
         InputAction moveAction;
+        InputAction mouseXAction;
         float moveInput;
+        float mouseScreenX;
+        float lastMouseScreenX;
+        bool mouseActiveThisFrame;
+        bool mouseInitialized;
         float baseWidth;
         Coroutine widenRoutine;
 
@@ -27,22 +32,54 @@ namespace Shatterline
 
             InputActionMap gameplay = controls.FindActionMap("Gameplay", true);
             moveAction = gameplay.FindAction("Move", true);
+            mouseXAction = gameplay.FindAction("MouseX", true);
         }
 
         void OnEnable()
         {
             moveAction.Enable();
+            mouseXAction.Enable();
         }
 
         void Update()
         {
             moveInput = moveAction.ReadValue<float>();
+
+            // Mouse is absolute cursor-tracking (GDD §4), not a relative drag
+            // like touch: only treat it as "active" while it's actually moving,
+            // so keyboard/gamepad control still works on a desktop with an idle
+            // mouse plugged in.
+            mouseActiveThisFrame = false;
+            if (mouseXAction.controls.Count > 0)
+            {
+                mouseScreenX = mouseXAction.ReadValue<float>();
+                if (!mouseInitialized)
+                {
+                    lastMouseScreenX = mouseScreenX;
+                    mouseInitialized = true;
+                }
+                else if (!Mathf.Approximately(mouseScreenX, lastMouseScreenX))
+                {
+                    mouseActiveThisFrame = true;
+                }
+                lastMouseScreenX = mouseScreenX;
+            }
         }
 
         void FixedUpdate()
         {
-            float delta = moveInput * config.paddleSpeed * Time.fixedDeltaTime;
-            float newX = ClampToScreen(rb.position.x + delta);
+            float newX;
+            if (mouseActiveThisFrame)
+            {
+                float depth = Mathf.Abs(playCamera.transform.position.z - transform.position.z);
+                Vector3 world = playCamera.ScreenToWorldPoint(new Vector3(mouseScreenX, 0f, depth));
+                newX = ClampToScreen(world.x);
+            }
+            else
+            {
+                float delta = moveInput * config.paddleSpeed * Time.fixedDeltaTime;
+                newX = ClampToScreen(rb.position.x + delta);
+            }
             rb.MovePosition(new Vector2(newX, rb.position.y));
         }
 
