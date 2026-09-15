@@ -181,14 +181,14 @@ graph TD
 
 ### 8.1 MVP — the game is not a game without these
 
-- [ ] Paddle moves via keyboard/mouse and touch drag, clamped to screen bounds
-- [ ] Ball launches on input, moves at constant speed, reflects correctly off walls, paddle, and bricks
-- [ ] One hand-built brick layout (`LevelData` asset) with standard (1-hit) and tough (2-hit) bricks
-- [ ] Score increments correctly on brick destroy; HUD shows score, lives, level number
-- [ ] Ball-lost detection, 3-life system, Game Over screen with restart
-- [ ] Level-clear detection when all breakable bricks are gone
-- [ ] Main Menu → Play → Game Over → Menu loop fully wired
-- [ ] Bounce / break / game-over SFX
+- [x] Paddle moves via keyboard/mouse and touch drag, clamped to screen bounds
+- [x] Ball launches on input, moves at constant speed, reflects correctly off walls, paddle, and bricks
+- [x] One hand-built brick layout (`LevelData` asset) with standard (1-hit) and tough (2-hit) bricks
+- [x] Score increments correctly on brick destroy; HUD shows score, lives, level number
+- [x] Ball-lost detection, 3-life system, Game Over screen with restart
+- [x] Level-clear detection when all breakable bricks are gone
+- [x] Main Menu → Play → Game Over → Menu loop fully wired
+- [x] Bounce / break / game-over SFX
 - [ ] Builds and runs correctly on both Windows standalone and an Android device
 
 ### 8.2 Polish — if the MVP is done and playable
