@@ -50,6 +50,41 @@ namespace ShatterlineEditor
             EnsureSortingLayer("Ball");
             EnsureSortingLayer("Paddle");
             EnsureSortingLayer("VFX");
+
+            EnsurePhysicsLayer("Ball");
+            // Multi-Ball can put several balls in flight at once; without this
+            // they physically collide with each other, which can send one into
+            // a trajectory that never crosses back below the paddle, silently
+            // stalling GameManager's "life lost when last ball is gone" check.
+            int ballLayer = LayerMask.NameToLayer("Ball");
+            Physics2D.IgnoreLayerCollision(ballLayer, ballLayer, true);
+        }
+
+        static void EnsurePhysicsLayer(string layerName)
+        {
+            var tagManager = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0];
+            var so = new SerializedObject(tagManager);
+            SerializedProperty layers = so.FindProperty("layers");
+
+            for (int i = 0; i < layers.arraySize; i++)
+            {
+                if (layers.GetArrayElementAtIndex(i).stringValue == layerName)
+                    return;
+            }
+
+            // Layers 0-7 are Unity built-ins; use the first free user slot (8-31).
+            for (int i = 8; i < layers.arraySize; i++)
+            {
+                SerializedProperty slot = layers.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(slot.stringValue))
+                {
+                    slot.stringValue = layerName;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    return;
+                }
+            }
+
+            Debug.LogError($"SHATTERLINE setup: no free user layer slot for '{layerName}'.");
         }
 
         static void EnsureTag(string tag)
@@ -417,6 +452,7 @@ namespace ShatterlineEditor
             col.radius = 0.25f;
             col.sharedMaterial = physMat;
             go.tag = "Ball";
+            go.layer = LayerMask.NameToLayer("Ball");
             go.transform.localScale = Vector3.one * 0.5f;
 
             go.AddComponent<BallController>();
