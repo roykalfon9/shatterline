@@ -15,6 +15,7 @@ namespace Shatterline
         PowerUpType type;
         PowerUpSpawner owner;
         Camera cam;
+        bool consumed;
 
         void Awake()
         {
@@ -29,6 +30,7 @@ namespace Shatterline
             type = powerUpType;
             owner = spawner;
             cam = camera;
+            consumed = false;
         }
 
         void Update()
@@ -37,7 +39,7 @@ namespace Shatterline
 
             float bottomY = cam.ViewportToWorldPoint(new Vector3(0.5f, 0f, 0f)).y;
             if (transform.position.y < bottomY)
-                owner.ReturnCapsule(this);
+                Consume(() => { });
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -45,7 +47,21 @@ namespace Shatterline
             if (!other.CompareTag("Paddle"))
                 return;
 
-            owner.ApplyEffect(type);
+            // The paddle has two overlapping colliders (a solid one for ball
+            // bounces, a slightly larger trigger one for catching power-ups),
+            // so a falling capsule can overlap both and fire this callback
+            // twice for the same catch. Guard against double-applying the
+            // effect (Multi-Ball spawning balls twice, etc.).
+            Consume(() => owner.ApplyEffect(type));
+        }
+
+        void Consume(System.Action beforeReturn)
+        {
+            if (consumed)
+                return;
+            consumed = true;
+
+            beforeReturn();
             owner.ReturnCapsule(this);
         }
     }

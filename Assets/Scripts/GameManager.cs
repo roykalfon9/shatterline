@@ -49,7 +49,7 @@ namespace Shatterline
         const string BestScoreKey = "Shatterline.BestScore";
 
         ObjectPool<BallController> ballPool;
-        readonly List<BallController> activeBalls = new List<BallController>();
+        readonly HashSet<BallController> activeBalls = new HashSet<BallController>();
         float slowBallMultiplier = 1f;
         bool isPaused;
         InputAction launchAction;
@@ -182,7 +182,8 @@ namespace Shatterline
             if (activeBalls.Count == 0)
                 return;
 
-            BallController source = activeBalls[0];
+            BallController source = null;
+            foreach (var b in activeBalls) { source = b; break; }
             SpawnExtraBall(source, 20f);
             SpawnExtraBall(source, -20f);
         }
