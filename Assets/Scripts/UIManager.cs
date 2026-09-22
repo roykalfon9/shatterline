@@ -90,26 +90,48 @@ namespace Shatterline
         }
 
         // UI Button targets, wired in the scene via GameSetup.
-        public void OnPlayClicked() => GameManager.Instance.StartRun();
+        public void OnPlayClicked()
+        {
+            AudioManager.Instance.PlayClick();
+            GameManager.Instance.StartRun();
+        }
 
         public void OnRetryClicked()
         {
+            AudioManager.Instance.PlayClick();
             if (!GameManager.Instance.InputLocked)
                 GameManager.Instance.StartRun();
         }
 
         public void OnMenuClicked()
         {
+            AudioManager.Instance.PlayClick();
             if (!GameManager.Instance.InputLocked)
                 GameManager.Instance.ReturnToMenu();
         }
 
-        public void OnResumeClicked() => GameManager.Instance.ResumeFromPause();
+        public void OnResumeClicked()
+        {
+            AudioManager.Instance.PlayClick();
+            GameManager.Instance.ResumeFromPause();
+        }
 
-        public void OnQuitToMenuClicked() => GameManager.Instance.QuitToMenuFromPause();
+        public void OnQuitToMenuClicked()
+        {
+            AudioManager.Instance.PlayClick();
+            GameManager.Instance.QuitToMenuFromPause();
+        }
 
-        public void OnPauseIconClicked() => GameManager.Instance.TogglePause();
+        public void OnPauseIconClicked()
+        {
+            AudioManager.Instance.PlayClick();
+            GameManager.Instance.TogglePause();
+        }
 
-        public void OnMuteToggleClicked() => AudioManager.Instance.ToggleMute();
+        public void OnMuteToggleClicked()
+        {
+            AudioManager.Instance.PlayClick();
+            AudioManager.Instance.ToggleMute();
+        }
     }
 }

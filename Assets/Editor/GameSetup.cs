@@ -20,6 +20,13 @@ namespace ShatterlineEditor
         static readonly float HalfWidth = HalfHeight * TargetAspect;
         const float PaddleY = -6.8f;
 
+        static readonly Color GoldAccent = new Color(1f, 0.788f, 0.235f);
+        static readonly Color CreamText = new Color(0.94f, 0.93f, 0.90f);
+        static readonly Color ButtonTextDark = new Color(0.17f, 0.17f, 0.23f);
+        static readonly Color WarnText = new Color(0.95f, 0.4f, 0.32f);
+        static readonly Color DimOverlay = new Color(0.04f, 0.04f, 0.07f, 0.82f);
+        static readonly Color TextShadowColor = new Color(0f, 0f, 0f, 0.55f);
+
         [MenuItem("Tools/Shatterline/Build Game Scene")]
         public static void BuildGameScene()
         {
@@ -55,6 +62,7 @@ namespace ShatterlineEditor
             AudioClip breakClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/sfx_break.ogg");
             AudioClip powerUpClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/sfx_powerup.ogg");
             AudioClip gameOverClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/sfx_gameover.ogg");
+            AudioClip clickClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/sfx_click.ogg");
 
             Camera camera = BuildCamera();
             BuildEventSystem(controls);
@@ -112,6 +120,7 @@ namespace ShatterlineEditor
             Set(audioManager, "breakClip", breakClip);
             Set(audioManager, "powerUpClip", powerUpClip);
             Set(audioManager, "gameOverClip", gameOverClip);
+            Set(audioManager, "clickClip", clickClip);
 
             Set(gameManager, "config", config);
             SetArray(gameManager, "levels", levels);
@@ -178,20 +187,26 @@ namespace ShatterlineEditor
             GameObject go = new GameObject("Paddle");
             go.tag = "Paddle";
             go.transform.position = new Vector3(0f, PaddleY, 0f);
-            go.transform.localScale = new Vector3(1.6f, 0.4f, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Sprites/paddle.png");
             sr.sortingLayerName = "Paddle";
 
+            // transform.localScale multiplies the sprite's own pixels-per-unit
+            // size, it isn't an absolute world size - scale/size colliders
+            // relative to the sprite's native bounds for the desired dimensions.
+            Vector2 nativeSize = sr.sprite.bounds.size;
+            Vector2 desiredSize = new Vector2(1.6f, 0.4f);
+            go.transform.localScale = new Vector3(desiredSize.x / nativeSize.x, desiredSize.y / nativeSize.y, 1f);
+
             var rb = go.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;
 
             var physicalCollider = go.AddComponent<BoxCollider2D>();
-            physicalCollider.size = Vector2.one;
+            physicalCollider.size = nativeSize;
 
             var triggerCollider = go.AddComponent<BoxCollider2D>();
-            triggerCollider.size = Vector2.one * 1.1f;
+            triggerCollider.size = nativeSize * 1.1f;
             triggerCollider.isTrigger = true;
 
             go.AddComponent<PaddleController>();
@@ -270,8 +285,9 @@ namespace ShatterlineEditor
         {
             GameObject panel = CreatePanel("MainMenuPanel", parent);
             TMP_Text title = CreateText(panel.transform, "Title", "SHATTERLINE", 64, font,
-                Anchors(0f, 0.65f, 1f, 0.85f));
+                Anchors(0f, 0.65f, 1f, 0.85f), GoldAccent);
             title.fontStyle = FontStyles.Bold;
+            title.GetComponent<Shadow>().effectDistance = new Vector2(2.5f, -2.5f);
 
             Button playButton = CreateButton(panel.transform, "PlayButton", "PLAY", font,
                 Anchors(0.25f, 0.45f, 0.75f, 0.55f));
@@ -300,13 +316,16 @@ namespace ShatterlineEditor
             levelText.alignment = TextAlignmentOptions.Top;
 
             countdownText = CreateText(panel.transform, "ServeCountdownText", "3", 96, font,
-                Anchors(0.3f, 0.45f, 0.7f, 0.6f));
+                Anchors(0.3f, 0.45f, 0.7f, 0.6f), GoldAccent);
+            countdownText.fontStyle = FontStyles.Bold;
+            countdownText.GetComponent<Shadow>().effectDistance = new Vector2(2.5f, -2.5f);
             countdownText.gameObject.SetActive(false);
 
             GameObject livesGroup = new GameObject("LivesGroup", typeof(RectTransform));
             livesGroup.transform.SetParent(panel.transform, false);
             SetAnchors(livesGroup.GetComponent<RectTransform>(), Anchors(0.62f, 0.93f, 0.98f, 0.99f));
 
+            Sprite paddleSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Sprites/paddle.png");
             lifeIcons = new Image[3];
             for (int i = 0; i < 3; i++)
             {
@@ -316,6 +335,8 @@ namespace ShatterlineEditor
                 float w = 1f / 3f;
                 SetAnchors(rt, Anchors(i * w, 0f, i * w + w * 0.85f, 1f));
                 lifeIcons[i] = icon.GetComponent<Image>();
+                lifeIcons[i].sprite = paddleSprite;
+                lifeIcons[i].preserveAspect = true;
                 lifeIcons[i].color = Color.white;
             }
 
@@ -329,9 +350,10 @@ namespace ShatterlineEditor
         {
             GameObject panel = CreatePanel("PausePanel", parent);
             Image dim = panel.GetComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.6f);
+            dim.color = DimOverlay;
 
-            CreateText(panel.transform, "PausedText", "PAUSED", 56, font, Anchors(0f, 0.6f, 1f, 0.75f));
+            TMP_Text pausedText = CreateText(panel.transform, "PausedText", "PAUSED", 56, font, Anchors(0f, 0.6f, 1f, 0.75f), GoldAccent);
+            pausedText.fontStyle = FontStyles.Bold;
 
             Button resume = CreateButton(panel.transform, "ResumeButton", "RESUME", font, Anchors(0.25f, 0.45f, 0.75f, 0.55f));
             UnityEventTools.AddPersistentListener(resume.onClick, ui.OnResumeClicked);
@@ -346,10 +368,11 @@ namespace ShatterlineEditor
         {
             GameObject panel = CreatePanel("LevelClearPanel", parent);
             Image dim = panel.GetComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.5f);
+            dim.color = DimOverlay;
 
             levelClearText = CreateText(panel.transform, "LevelClearText", "LEVEL 1 CLEAR", 48, font,
-                Anchors(0f, 0.5f, 1f, 0.6f));
+                Anchors(0f, 0.5f, 1f, 0.6f), GoldAccent);
+            levelClearText.fontStyle = FontStyles.Bold;
             return panel;
         }
 
@@ -358,13 +381,16 @@ namespace ShatterlineEditor
         {
             GameObject panel = CreatePanel("GameOverPanel", parent);
             Image dim = panel.GetComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.7f);
+            dim.color = DimOverlay;
 
-            CreateText(panel.transform, "GameOverText", "GAME OVER", 56, font, Anchors(0f, 0.7f, 1f, 0.82f));
+            TMP_Text gameOverText = CreateText(panel.transform, "GameOverText", "GAME OVER", 56, font, Anchors(0f, 0.7f, 1f, 0.82f), WarnText);
+            gameOverText.fontStyle = FontStyles.Bold;
             finalScoreText = CreateText(panel.transform, "FinalScoreText", "Score: 0", 32, font, Anchors(0f, 0.6f, 1f, 0.68f));
             bestScoreGameOverText = CreateText(panel.transform, "BestScoreText", "Best: 0", 28, font, Anchors(0f, 0.53f, 1f, 0.6f));
 
-            newBestTag = CreateText(panel.transform, "NewBestTag", "NEW BEST!", 26, font, Anchors(0f, 0.46f, 1f, 0.52f)).gameObject;
+            TMP_Text newBestText = CreateText(panel.transform, "NewBestTag", "NEW BEST!", 26, font, Anchors(0f, 0.46f, 1f, 0.52f), GoldAccent);
+            newBestText.fontStyle = FontStyles.Bold;
+            newBestTag = newBestText.gameObject;
 
             Button retry = CreateButton(panel.transform, "RetryButton", "RETRY", font, Anchors(0.25f, 0.3f, 0.75f, 0.4f));
             UnityEventTools.AddPersistentListener(retry.onClick, ui.OnRetryClicked);
@@ -387,7 +413,7 @@ namespace ShatterlineEditor
             return go;
         }
 
-        static TMP_Text CreateText(Transform parent, string name, string text, float fontSize, TMP_FontAsset font, Rect anchors)
+        static TMP_Text CreateText(Transform parent, string name, string text, float fontSize, TMP_FontAsset font, Rect anchors, Color? color = null)
         {
             GameObject go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
@@ -397,21 +423,46 @@ namespace ShatterlineEditor
             tmp.text = text;
             tmp.fontSize = fontSize;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = Color.white;
+            tmp.color = color ?? CreamText;
             if (font != null)
                 tmp.font = font;
+
+            Shadow shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = TextShadowColor;
+            shadow.effectDistance = new Vector2(1.5f, -1.5f);
             return tmp;
         }
 
+        static Sprite buttonDefaultSprite;
+        static Sprite buttonSelectedSprite;
+
         static Button CreateButton(Transform parent, string name, string label, TMP_FontAsset font, Rect anchors)
         {
+            if (buttonDefaultSprite == null)
+                buttonDefaultSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Sprites/UI/button_default.png");
+            if (buttonSelectedSprite == null)
+                buttonSelectedSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/Sprites/UI/button_selected.png");
+
             GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image));
             go.transform.SetParent(parent, false);
             SetAnchors(go.GetComponent<RectTransform>(), anchors);
-            go.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
+
+            Image image = go.GetComponent<Image>();
+            image.sprite = buttonDefaultSprite;
+            image.type = Image.Type.Sliced;
 
             Button button = go.AddComponent<Button>();
-            CreateText(go.transform, "Label", label, 28, font, new Rect(0f, 0f, 1f, 1f));
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.SpriteSwap;
+            SpriteState state = button.spriteState;
+            state.highlightedSprite = buttonSelectedSprite;
+            state.pressedSprite = buttonSelectedSprite;
+            state.selectedSprite = buttonSelectedSprite;
+            button.spriteState = state;
+
+            TMP_Text labelText = CreateText(go.transform, "Label", label, 28, font, new Rect(0f, 0f, 1f, 1f), ButtonTextDark);
+            labelText.fontStyle = FontStyles.Bold;
+            Object.DestroyImmediate(labelText.GetComponent<Shadow>());
             return button;
         }
 

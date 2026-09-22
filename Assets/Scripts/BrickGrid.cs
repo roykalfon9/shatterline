@@ -16,6 +16,7 @@ namespace Shatterline
         [SerializeField] float sideMarginViewport = 0.05f;
         [SerializeField] float rowSpan = 0.55f;
         [SerializeField] float brickGap = 0.08f;
+        [SerializeField] float brickHeight = 0.4f;
 
         readonly List<Brick> activeBricks = new List<Brick>();
         ObjectPool<ParticleSystem> particlePool;
@@ -58,12 +59,15 @@ namespace Shatterline
                         topLeft.y - rowSpan * r,
                         0f);
 
-                    Brick brick = Instantiate(brickPrefab, pos, Quaternion.identity, transform);
-                    Vector3 scale = brick.transform.localScale;
-                    scale.x = brickWidth;
-                    brick.transform.localScale = scale;
-
                     Sprite sprite = brickSprites[(scoreRowIndex - 1 + brickSprites.Length) % brickSprites.Length];
+
+                    Brick brick = Instantiate(brickPrefab, pos, Quaternion.identity, transform);
+                    // transform.localScale multiplies the sprite's own pixels-per-unit
+                    // size, it isn't an absolute world size - divide by the sprite's
+                    // native bounds to land on the actual desired width/height.
+                    Vector2 nativeSize = sprite.bounds.size;
+                    brick.transform.localScale = new Vector3(brickWidth / nativeSize.x, brickHeight / nativeSize.y, 1f);
+
                     brick.Initialize(hp, scoreRowIndex * 10, sprite, this);
                     brick.gameObject.SetActive(true);
 

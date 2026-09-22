@@ -12,6 +12,7 @@ namespace Shatterline
         [SerializeField] AudioClip breakClip;
         [SerializeField] AudioClip powerUpClip;
         [SerializeField] AudioClip gameOverClip;
+        [SerializeField] AudioClip clickClip;
         [SerializeField] AudioClip musicClip;
 
         const string MuteKey = "Shatterline.Muted";
@@ -44,6 +45,7 @@ namespace Shatterline
         public void PlayBreak() => sfxSource.PlayOneShot(breakClip);
         public void PlayPowerUp() => sfxSource.PlayOneShot(powerUpClip);
         public void PlayGameOver() => sfxSource.PlayOneShot(gameOverClip);
+        public void PlayClick() => sfxSource.PlayOneShot(clickClip);
 
         public void ToggleMute()
         {

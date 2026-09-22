@@ -210,9 +210,14 @@ namespace ShatterlineEditor
 
             foreach (string path in paths)
                 ApplySpriteImportSettings(path);
+
+            // 9-sliced UI buttons: 12px border on all sides (matches the
+            // separate corner/edge pieces Kenney ships alongside this sprite).
+            ApplySpriteImportSettings($"{ArtDir}/UI/button_default.png", new Vector4(12, 12, 12, 12));
+            ApplySpriteImportSettings($"{ArtDir}/UI/button_selected.png", new Vector4(12, 12, 12, 12));
         }
 
-        static void ApplySpriteImportSettings(string path)
+        static void ApplySpriteImportSettings(string path, Vector4? border = null)
         {
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null)
@@ -224,6 +229,13 @@ namespace ShatterlineEditor
             importer.spritePixelsPerUnit = 100f;
             importer.mipmapEnabled = false;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
+            if (border.HasValue)
+            {
+                TextureImporterSettings settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteBorder = border.Value;
+                importer.SetTextureSettings(settings);
+            }
             EditorUtility.SetDirty(importer);
             importer.SaveAndReimport();
         }
@@ -448,12 +460,20 @@ namespace ShatterlineEditor
             rb.gravityScale = 0f;
             rb.freezeRotation = true;
 
+            // transform.localScale multiplies the sprite's own pixels-per-unit
+            // size, it isn't an absolute world size - scale relative to the
+            // sprite's native bounds to land on the desired diameter, and size
+            // the collider in the same native-bounds space so it scales with it.
+            const float desiredDiameter = 0.3f;
+            Vector2 nativeSize = sr.sprite.bounds.size;
+            float scale = desiredDiameter / nativeSize.x;
+            go.transform.localScale = Vector3.one * scale;
+
             var col = go.AddComponent<CircleCollider2D>();
-            col.radius = 0.25f;
+            col.radius = nativeSize.x / 2f;
             col.sharedMaterial = physMat;
             go.tag = "Ball";
             go.layer = LayerMask.NameToLayer("Ball");
-            go.transform.localScale = Vector3.one * 0.5f;
 
             go.AddComponent<BallController>();
 
@@ -476,12 +496,16 @@ namespace ShatterlineEditor
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingLayerName = "Bricks";
 
+            // Collider size matches the brick sprite's native (pixels/PPU) bounds,
+            // since BrickGrid scales this transform relative to that same native
+            // size at runtime - keeping the collider and visual proportional
+            // regardless of the exact scale a given level ends up using.
+            Sprite refSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtDir}/brick_red.png");
             var col = go.AddComponent<BoxCollider2D>();
             col.sharedMaterial = physMat;
-            col.size = Vector2.one;
+            col.size = refSprite != null ? (Vector2)refSprite.bounds.size : Vector2.one;
 
             go.AddComponent<Brick>();
-            go.transform.localScale = new Vector3(0.9f, 0.4f, 1f);
 
             Directory.CreateDirectory(PrefabsDir);
             PrefabUtility.SaveAsPrefabAsset(go, path);
@@ -501,10 +525,17 @@ namespace ShatterlineEditor
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingLayerName = "PowerUps";
 
+            // Placeholder capsule sprites are always generated at 32px/100ppu
+            // (see EnsurePlaceholderSprite), i.e. a native 0.32x0.32 world-unit
+            // size - transform.localScale multiplies that, it isn't an absolute
+            // world size, so scale/size relative to it for the desired diameter.
+            const float nativeSize = 0.32f;
+            const float desiredSize = 0.45f;
+
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = Vector2.one;
-            go.transform.localScale = Vector3.one * 0.4f;
+            col.size = new Vector2(nativeSize, nativeSize);
+            go.transform.localScale = Vector3.one * (desiredSize / nativeSize);
 
             go.AddComponent<PowerUpCapsule>();
 
