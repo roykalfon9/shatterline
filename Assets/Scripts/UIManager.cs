@@ -21,6 +21,7 @@ namespace Shatterline
 
         [Header("Main Menu")]
         [SerializeField] TMP_Text bestScoreMenuText;
+        [SerializeField] UnityEngine.UI.Button quitButton;
 
         [Header("Level Clear")]
         [SerializeField] TMP_Text levelClearText;
@@ -29,6 +30,15 @@ namespace Shatterline
         [SerializeField] TMP_Text finalScoreText;
         [SerializeField] TMP_Text bestScoreGameOverText;
         [SerializeField] GameObject newBestTag;
+
+        void Awake()
+        {
+#if UNITY_EDITOR || UNITY_STANDALONE
+            quitButton.gameObject.SetActive(true);
+#else
+            quitButton.gameObject.SetActive(false);
+#endif
+        }
 
         public void ShowScreenFor(GameState state)
         {
@@ -94,6 +104,18 @@ namespace Shatterline
         {
             AudioManager.Instance.PlayClick();
             GameManager.Instance.StartRun();
+        }
+
+        public void OnQuitClicked()
+        {
+#if UNITY_EDITOR || UNITY_STANDALONE
+            PlayerPrefs.Save();
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+#endif
         }
 
         public void OnRetryClicked()

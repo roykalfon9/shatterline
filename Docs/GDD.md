@@ -99,7 +99,7 @@ stateDiagram-v2
 
 <!-- Layout sketch / in-editor screenshot placeholder: goes here once the HUD exists. -->
 
-1. **Main Menu** — Title ("SHATTERLINE"), "PLAY" button, "Best Score: N" label, small mute toggle icon (top corner).
+1. **Main Menu** — Title ("SHATTERLINE"), "PLAY" button, "Best Score: N" label, "QUIT" button below the score on desktop builds, small mute toggle icon (top corner). QUIT saves preferences and exits immediately without confirmation; in the Unity Editor it stops Play mode. It is hidden on Android and other non-desktop players.
 2. **Playing (HUD)** — Score (top-left), lives shown as 3 small paddle icons (top-right), current level number (top-centre, small). Nothing else: no combo counters, no timers, no minimap — the pillars call for a clean, uncluttered read of the playfield.
 3. **Pause overlay** — semi-transparent dim over the playfield, "PAUSED" label, "RESUME" and "QUIT TO MENU" buttons.
 4. **Level Clear overlay** — "LEVEL N CLEAR" banner, auto-advances to the next level's Serve state after 1.2 s (no button needed).

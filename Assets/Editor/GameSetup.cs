@@ -296,6 +296,11 @@ namespace ShatterlineEditor
             CreateText(panel.transform, "BestScoreText", "Best Score: 0", 28, font,
                 Anchors(0f, 0.35f, 1f, 0.42f));
 
+            UnityEngine.UI.Button quitButton = CreateButton(panel.transform, "QuitButton", "QUIT", font,
+                Anchors(0.25f, 0.20f, 0.75f, 0.30f));
+            UnityEventTools.AddPersistentListener(quitButton.onClick, ui.OnQuitClicked);
+            Set(ui, "quitButton", quitButton);
+
             Button muteButton = CreateButton(panel.transform, "MuteButton", "MUTE", font,
                 Anchors(0.75f, 0.9f, 0.98f, 0.98f));
             UnityEventTools.AddPersistentListener(muteButton.onClick, ui.OnMuteToggleClicked);
