@@ -59,3 +59,5 @@ PerformanceTestRunSettings.json
 
 # Packages lock (keep tracked; comment out if you prefer to ignore)
 !/Packages/packages-lock.json
+.utmp/
+*.slnx
