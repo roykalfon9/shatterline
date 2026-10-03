@@ -61,3 +61,14 @@ PerformanceTestRunSettings.json
 !/Packages/packages-lock.json
 .utmp/
 *.slnx
+Assets/Resources.meta
+Assets/Scripts/ScreenFade.cs.meta
+Assets/Tests.meta
+Assets/Tests/
+Docs/Audio.md
+Docs/Demo.md
+Docs/Evidence/
+Docs/Screenshots/
+Docs/SubmissionPlan.md
+Docs/Validation.md
+Tools/
