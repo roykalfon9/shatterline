@@ -337,7 +337,7 @@ namespace ShatterlineEditor
                 .With("Positive", "<Keyboard>/rightArrow");
             move.AddBinding("<Gamepad>/leftStick/x");
             move.AddBinding("<Gamepad>/dpad/x");
-            move.AddBinding("<Touchscreen>/primaryTouch/delta/x").WithProcessor("scale(factor=0.08)");
+            // Touch drag reads pointer positions in PaddleController: distance, not velocity.
 
             // Mouse is absolute cursor-tracking (GDD §4), not a relative drag
             // like touch, so it gets its own action rather than sharing Move's
@@ -361,11 +361,11 @@ namespace ShatterlineEditor
             InputAction point = ui.AddAction("Point", InputActionType.PassThrough);
             point.AddBinding("<Mouse>/position");
             point.AddBinding("<Pen>/position");
-            point.AddBinding("<Touchscreen>/position");
+            point.AddBinding("<Touchscreen>/touch*/position");
 
             InputAction click = ui.AddAction("Click", InputActionType.PassThrough);
             click.AddBinding("<Mouse>/leftButton");
-            click.AddBinding("<Touchscreen>/primaryTouch/tap");
+            click.AddBinding("<Touchscreen>/touch*/press");
 
             InputAction submit = ui.AddAction("Submit", InputActionType.Button);
             submit.AddBinding("<Keyboard>/enter");
@@ -411,7 +411,13 @@ namespace ShatterlineEditor
         {
             Directory.CreateDirectory(ScriptableObjectsDir);
             var level1 = EnsureLevel(1, BuildSolidLayout(8, 6));
-            return new[] { level1 };
+            var levels = new List<LevelData> { level1 };
+            for (int number = 2; number <= 5; number++)
+            {
+                var level = AssetDatabase.LoadAssetAtPath<LevelData>($"{ScriptableObjectsDir}/Level{number}.asset");
+                if (level != null) levels.Add(level);
+            }
+            return levels.ToArray();
         }
 
         static List<BrickRow> BuildSolidLayout(int columns, int rows)
