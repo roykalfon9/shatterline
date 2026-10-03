@@ -40,6 +40,11 @@ namespace Shatterline
             pool = new ObjectPool<PowerUpCapsule>(capsulePrefab, poolSize, transform);
         }
 
+        public void ClearCapsules()
+        {
+            pool.ReturnAll();
+        }
+
         public void TryDrop(Vector3 position)
         {
             if (Random.value > config.powerUpDropChance)

@@ -6,7 +6,7 @@ namespace Shatterline
     public class GameConfig : ScriptableObject
     {
         [Header("Paddle")]
-        [Tooltip("How fast the paddle tracks keyboard/touch input, in units/sec.")]
+        [Tooltip("Keyboard/gamepad paddle speed in units/sec. Pointer movement is distance-based.")]
         public float paddleSpeed = 12f;
 
         [Header("Ball")]

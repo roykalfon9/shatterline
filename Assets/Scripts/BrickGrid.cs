@@ -20,6 +20,7 @@ namespace Shatterline
 
         readonly List<Brick> activeBricks = new List<Brick>();
         ObjectPool<ParticleSystem> particlePool;
+        readonly Dictionary<ParticleSystem, Coroutine> particleReturns = new Dictionary<ParticleSystem, Coroutine>();
 
         public int RemainingBreakable { get; private set; }
 
@@ -28,11 +29,23 @@ namespace Shatterline
             particlePool = new ObjectPool<ParticleSystem>(breakParticlePrefab, breakParticlePoolSize, transform);
         }
 
+        public void ClearLevel()
+        {
+            StopAllCoroutines();
+            particleReturns.Clear();
+            particlePool.ReturnAll();
+            foreach (var brick in activeBricks)
+            {
+                brick.gameObject.SetActive(false);
+                Destroy(brick.gameObject);
+            }
+            activeBricks.Clear();
+            RemainingBreakable = 0;
+        }
+
         public void BuildLevel(LevelData level)
         {
-            foreach (var brick in activeBricks)
-                Destroy(brick.gameObject);
-            activeBricks.Clear();
+            ClearLevel();
 
             Vector3 topLeft = playCamera.ViewportToWorldPoint(new Vector3(sideMarginViewport, 1f - topMarginViewport, 0f));
             Vector3 topRight = playCamera.ViewportToWorldPoint(new Vector3(1f - sideMarginViewport, 1f - topMarginViewport, 0f));
@@ -68,7 +81,8 @@ namespace Shatterline
                     Vector2 nativeSize = sprite.bounds.size;
                     brick.transform.localScale = new Vector3(brickWidth / nativeSize.x, brickHeight / nativeSize.y, 1f);
 
-                    brick.Initialize(hp, scoreRowIndex * 10, sprite, this);
+                    Color tint = Color.Lerp(level.accentColor, Color.white, r * 0.09f);
+                    brick.Initialize(hp, scoreRowIndex * 10, sprite, this, tint);
                     brick.gameObject.SetActive(true);
 
                     activeBricks.Add(brick);
@@ -89,17 +103,21 @@ namespace Shatterline
         public void PlayBreakEffect(Vector3 position, Color color)
         {
             ParticleSystem ps = particlePool.Get();
+            // Recycled effects must cancel the previous lease's delayed return.
+            if (particleReturns.TryGetValue(ps, out var previous)) StopCoroutine(previous);
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             ps.transform.position = position;
             var main = ps.main;
             main.startColor = color;
             ps.Play();
-            StartCoroutine(ReturnAfterPlay(ps));
+            particleReturns[ps] = StartCoroutine(ReturnAfterPlay(ps));
         }
 
         IEnumerator ReturnAfterPlay(ParticleSystem ps)
         {
             yield return new WaitForSeconds(ps.main.duration + ps.main.startLifetime.constantMax);
             ps.Stop();
+            particleReturns.Remove(ps);
             particlePool.Return(ps);
         }
     }

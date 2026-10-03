@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Shatterline
 {
@@ -18,6 +19,8 @@ namespace Shatterline
         [SerializeField] TMP_Text levelText;
         [SerializeField] TMP_Text serveCountdownText;
         [SerializeField] Image[] lifeIcons;
+        [SerializeField] GameObject launchHint;
+        [SerializeField] TMP_Text muteLabel;
 
         [Header("Main Menu")]
         [SerializeField] TMP_Text bestScoreMenuText;
@@ -40,13 +43,27 @@ namespace Shatterline
 #endif
         }
 
+        public void ShowLaunchHint(bool show)
+        {
+            if (launchHint != null) launchHint.SetActive(show);
+        }
+
+        void Start() => UpdateMuteLabel();
+
+        void UpdateMuteLabel()
+        {
+            if (muteLabel != null) muteLabel.text = AudioManager.Instance.IsMuted ? "SOUND OFF" : "SOUND ON";
+        }
+
         public void ShowScreenFor(GameState state)
         {
+            ShowLaunchHint(false);
             mainMenuPanel.SetActive(state == GameState.MainMenu);
             hudPanel.SetActive(state != GameState.MainMenu);
             levelClearPanel.SetActive(state == GameState.LevelClear);
             gameOverPanel.SetActive(state == GameState.GameOver);
             pausePanel.SetActive(false);
+            SelectFirstButton(state == GameState.MainMenu ? mainMenuPanel : state == GameState.GameOver ? gameOverPanel : null);
 
             if (state != GameState.Serve)
                 serveCountdownText.gameObject.SetActive(false);
@@ -57,7 +74,7 @@ namespace Shatterline
                     bestScoreMenuText.text = $"Best Score: {GameManager.Instance.BestScore}";
                     break;
                 case GameState.LevelClear:
-                    levelClearText.text = $"LEVEL {GameManager.Instance.CurrentLevelNumber} CLEAR";
+                    levelClearText.text = $"{GameManager.Instance.CurrentLevelName.ToUpperInvariant()}\nCLEAR";
                     break;
                 case GameState.GameOver:
                     finalScoreText.text = $"Score: {GameManager.Instance.Score}";
@@ -91,12 +108,20 @@ namespace Shatterline
                 return;
             }
             serveCountdownText.gameObject.SetActive(true);
-            serveCountdownText.text = count.ToString();
+            serveCountdownText.text = $"<size=23>{GameManager.Instance.CurrentLevelName.ToUpperInvariant()}</size>\n{count}";
         }
 
         public void ShowPauseOverlay(bool show)
         {
             pausePanel.SetActive(show);
+            SelectFirstButton(show ? pausePanel : null);
+        }
+
+        static void SelectFirstButton(GameObject panel)
+        {
+            if (EventSystem.current == null) return;
+            var button = panel != null ? panel.GetComponentInChildren<UnityEngine.UI.Button>() : null;
+            EventSystem.current.SetSelectedGameObject(button != null ? button.gameObject : null);
         }
 
         // UI Button targets, wired in the scene via GameSetup.
@@ -154,6 +179,7 @@ namespace Shatterline
         {
             AudioManager.Instance.PlayClick();
             AudioManager.Instance.ToggleMute();
+            UpdateMuteLabel();
         }
     }
 }

@@ -14,6 +14,8 @@ namespace Shatterline
         [SerializeField] AudioClip gameOverClip;
         [SerializeField] AudioClip clickClip;
         [SerializeField] AudioClip musicClip;
+        [SerializeField] AudioClip levelClearClip;
+        [SerializeField] AudioClip toughHitClip;
 
         const string MuteKey = "Shatterline.Muted";
         public bool IsMuted { get; private set; }
@@ -40,6 +42,9 @@ namespace Shatterline
             musicSource.loop = true;
             musicSource.Play();
         }
+
+        public void PlayLevelClear() { if (levelClearClip != null) sfxSource.PlayOneShot(levelClearClip); }
+        public void PlayToughHit() { if (toughHitClip != null) sfxSource.PlayOneShot(toughHitClip); }
 
         public void PlayBounce() => sfxSource.PlayOneShot(bounceClip);
         public void PlayBreak() => sfxSource.PlayOneShot(breakClip);

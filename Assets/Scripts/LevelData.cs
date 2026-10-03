@@ -15,6 +15,8 @@ namespace Shatterline
     {
         [Tooltip("Level number shown in the HUD.")]
         public int levelNumber = 1;
+        public string displayName = "First Light";
+        public Color accentColor = new Color(0.2f, 0.85f, 1f);
 
         [Tooltip("Rows are authored top-to-bottom, matching how the grid reads on screen. " +
                  "Row 0 in this list is the topmost row.")]

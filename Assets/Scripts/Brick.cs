@@ -14,25 +14,30 @@ namespace Shatterline
         BrickGrid owner;
         Coroutine flashRoutine;
         Color baseColor;
+        MaterialPropertyBlock properties;
+        static readonly int DamageId = Shader.PropertyToID("_Damage");
 
         void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
+            properties = new MaterialPropertyBlock();
         }
 
-        public void Initialize(int startingHp, int brickScoreValue, Sprite sprite, BrickGrid grid)
+        public void Initialize(int startingHp, int brickScoreValue, Sprite sprite, BrickGrid grid, Color tint)
         {
             hp = startingHp;
             scoreValue = brickScoreValue;
             owner = grid;
             spriteRenderer.sprite = sprite;
-            baseColor = Color.white;
+            baseColor = tint;
+            properties.SetFloat(DamageId, 0f);
+            spriteRenderer.SetPropertyBlock(properties);
             spriteRenderer.color = baseColor;
         }
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (!collision.collider.CompareTag("Ball"))
+            if (hp <= 0 || !collision.collider.CompareTag("Ball"))
                 return;
 
             hp--;
@@ -44,6 +49,9 @@ namespace Shatterline
 
         void Flash()
         {
+            AudioManager.Instance.PlayToughHit();
+            properties.SetFloat(DamageId, 1f);
+            spriteRenderer.SetPropertyBlock(properties);
             if (flashRoutine != null)
                 StopCoroutine(flashRoutine);
             flashRoutine = StartCoroutine(FlashRoutine());
@@ -60,7 +68,7 @@ namespace Shatterline
         void Break()
         {
             AudioManager.Instance.PlayBreak();
-            owner.PlayBreakEffect(transform.position, spriteRenderer.color);
+            owner.PlayBreakEffect(transform.position, baseColor);
             GameManager.Instance.AddScore(scoreValue);
             owner.NotifyBrickBroken(this);
             gameObject.SetActive(false);

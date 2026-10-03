@@ -9,6 +9,7 @@ namespace Shatterline
         [SerializeField] float restOffsetY = 0.35f;
 
         Rigidbody2D rb;
+        TrailRenderer trail;
         Transform paddleReference;
 
         public bool HasLaunched { get; private set; }
@@ -20,6 +21,7 @@ namespace Shatterline
         void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
+            trail = GetComponent<TrailRenderer>();
             rb.gravityScale = 0f;
         }
 
@@ -31,6 +33,7 @@ namespace Shatterline
         public void ResetBall(float baseSpeed, float slowMultiplier)
         {
             HasLaunched = false;
+            if (trail != null) { trail.emitting = false; trail.Clear(); }
             CurrentSpeed = baseSpeed;
             speedMultiplier = slowMultiplier;
             Direction = Vector2.up;
@@ -45,6 +48,7 @@ namespace Shatterline
         public void LaunchInDirection(Vector2 direction)
         {
             HasLaunched = true;
+            if (trail != null) trail.emitting = true;
             Direction = direction.normalized;
             rb.linearVelocity = Direction * CurrentSpeed * speedMultiplier;
         }
@@ -88,8 +92,14 @@ namespace Shatterline
             AudioManager.Instance.PlayBounce();
         }
 
+        void OnDisable()
+        {
+            if (trail != null) { trail.emitting = false; trail.Clear(); }
+        }
+
         void HandlePaddleBounce(Collision2D collision)
         {
+            collision.collider.GetComponent<PaddleController>()?.ShowHitFeedback();
             Bounds paddleBounds = collision.collider.bounds;
             float offset = (rb.position.x - paddleBounds.center.x) / paddleBounds.extents.x;
             offset = Mathf.Clamp(offset, -1f, 1f);

@@ -33,7 +33,7 @@ namespace Shatterline
         [SerializeField] InputActionAsset controls;
 
         [Header("Timings")]
-        [SerializeField] float serveCountdownStepSeconds = 1f;
+        [SerializeField] float serveCountdownStepSeconds = .3f;
         [SerializeField] float ballLostFreezeSeconds = 0.5f;
         [SerializeField] float levelClearPauseSeconds = 1.2f;
         [SerializeField] float gameOverInputLockoutSeconds = 0.5f;
@@ -45,6 +45,7 @@ namespace Shatterline
         public int CurrentLevelIndex { get; private set; }
         public int CurrentLevelNumber { get; private set; }
         public bool NewBestThisRun { get; private set; }
+        public string CurrentLevelName { get; private set; }
 
         const string BestScoreKey = "Shatterline.BestScore";
 
@@ -52,10 +53,15 @@ namespace Shatterline
         readonly HashSet<BallController> activeBalls = new HashSet<BallController>();
         float slowBallMultiplier = 1f;
         bool isPaused;
+        int launchBlockedThroughFrame;
+        Coroutine stateRoutine;
+        PaddleController paddle;
+        PowerUpSpawner powerUpSpawner;
         InputAction launchAction;
         InputAction pauseAction;
 
         public bool InputLocked { get; private set; }
+        public bool AcceptsPaddleInput => !isPaused && (State == GameState.Serve || State == GameState.Playing);
 
         void Awake()
         {
@@ -65,6 +71,9 @@ namespace Shatterline
                 return;
             }
             Instance = this;
+
+            paddle = paddleTransform.GetComponent<PaddleController>();
+            powerUpSpawner = FindFirstObjectByType<PowerUpSpawner>();
 
             BestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
             ballPool = new ObjectPool<BallController>(ballPrefab, ballPoolSize, transform);
@@ -101,6 +110,7 @@ namespace Shatterline
 
         public void StartRun()
         {
+            ResetRunState();
             Score = 0;
             Lives = config.livesStart;
             CurrentLevelIndex = 0;
@@ -115,31 +125,35 @@ namespace Shatterline
         {
             CurrentLevelIndex = index;
             LevelData level = levels[index % levels.Length];
-            CurrentLevelNumber = level.levelNumber;
+            CurrentLevelNumber = index + 1;
+            CurrentLevelName = level.displayName;
             brickGrid.BuildLevel(level);
-            ui.UpdateLevel(level.levelNumber);
+            ui.UpdateLevel(CurrentLevelNumber);
             SetState(GameState.Serve);
         }
 
         void SetState(GameState next)
         {
+            if (stateRoutine != null) StopCoroutine(stateRoutine);
+            stateRoutine = null;
             State = next;
             ui.ShowScreenFor(next);
 
             switch (next)
             {
                 case GameState.Serve:
-                    StartCoroutine(ServeCountdownRoutine());
+                    stateRoutine = StartCoroutine(ServeCountdownRoutine());
                     break;
                 case GameState.BallLost:
-                    StartCoroutine(BallLostFreezeRoutine());
+                    stateRoutine = StartCoroutine(BallLostFreezeRoutine());
                     break;
                 case GameState.LevelClear:
-                    StartCoroutine(LevelClearRoutine());
+                    AudioManager.Instance.PlayLevelClear();
+                    stateRoutine = StartCoroutine(LevelClearRoutine());
                     break;
                 case GameState.GameOver:
                     AudioManager.Instance.PlayGameOver();
-                    StartCoroutine(GameOverLockoutRoutine());
+                    stateRoutine = StartCoroutine(GameOverLockoutRoutine());
                     break;
             }
         }
@@ -153,18 +167,20 @@ namespace Shatterline
             }
             ui.ShowServeCountdown(0);
 
-            BallController ball = SpawnBall();
+            SpawnBall();
             SetState(GameState.Playing);
+            ui.ShowLaunchHint(true);
+        }
 
-            yield return null;
-            while (State == GameState.Playing && !ball.HasLaunched)
-            {
-                if (launchAction.WasPressedThisFrame())
-                {
-                    ball.Launch();
-                }
-                yield return null;
-            }
+        void Update()
+        {
+            if (State != GameState.Playing || isPaused || Time.frameCount <= launchBlockedThroughFrame
+                || !launchAction.WasPressedThisFrame()
+                || PointerInput.IsLaunchOverControl(launchAction))
+                return;
+            foreach (var ball in activeBalls)
+                if (!ball.HasLaunched) ball.Launch();
+            ui.ShowLaunchHint(false);
         }
 
         BallController SpawnBall()
@@ -179,18 +195,19 @@ namespace Shatterline
 
         public void SpawnMultiBalls()
         {
-            if (activeBalls.Count == 0)
+            if (State != GameState.Playing || activeBalls.Count == 0)
                 return;
 
             BallController source = null;
             foreach (var b in activeBalls) { source = b; break; }
+            if (!source.HasLaunched) return;
             SpawnExtraBall(source, 20f);
             SpawnExtraBall(source, -20f);
         }
 
         void SpawnExtraBall(BallController source, float angleOffsetDeg)
         {
-            BallController ball = ballPool.Get();
+            if (!ballPool.TryGet(out BallController ball)) return;
             ball.SetPaddleReference(paddleTransform);
             ball.transform.position = source.transform.position;
             ball.ResetBall(source.CurrentSpeed, slowBallMultiplier);
@@ -200,7 +217,7 @@ namespace Shatterline
 
         public void ReportBallLost(BallController ball)
         {
-            activeBalls.Remove(ball);
+            if (State != GameState.Playing || !activeBalls.Remove(ball)) return;
             ballPool.Return(ball);
 
             if (activeBalls.Count > 0)
@@ -226,11 +243,9 @@ namespace Shatterline
 
         public void ReportLevelClear()
         {
-            foreach (var ball in new List<BallController>(activeBalls))
-            {
-                activeBalls.Remove(ball);
-                ballPool.Return(ball);
-            }
+            if (State != GameState.Playing) return;
+            ClearBalls();
+            ResetPowerUps();
             SetState(GameState.LevelClear);
         }
 
@@ -254,6 +269,7 @@ namespace Shatterline
         void SetSlowBallMultiplier(float multiplier)
         {
             slowBallMultiplier = multiplier;
+            paddle.SetSlowVisual(multiplier < 1f);
             foreach (var ball in activeBalls)
                 ball.SetSpeedMultiplier(multiplier);
         }
@@ -282,12 +298,46 @@ namespace Shatterline
 
         public void ReturnToMenu()
         {
-            foreach (var ball in new List<BallController>(activeBalls))
-            {
-                activeBalls.Remove(ball);
-                ballPool.Return(ball);
-            }
+            ResetRunState();
+            brickGrid.ClearLevel();
+            PlayerPrefs.Save();
             SetState(GameState.MainMenu);
+        }
+
+        void ClearBalls()
+        {
+            ballPool.ReturnAll();
+            activeBalls.Clear();
+        }
+
+        void ResetPowerUps()
+        {
+            if (slowBallRoutine != null) StopCoroutine(slowBallRoutine);
+            slowBallRoutine = null;
+            SetSlowBallMultiplier(1f);
+            paddle.ResetEffects();
+            powerUpSpawner.ClearCapsules();
+        }
+
+        // A fresh run/menu owns no timers or pooled objects from the previous run.
+        void ResetRunState()
+        {
+            StopAllCoroutines();
+            stateRoutine = null;
+            slowBallRoutine = null;
+            InputLocked = false;
+            isPaused = false;
+            Time.timeScale = 1f;
+            ClearBalls();
+            ResetPowerUps();
+            paddleTransform.position = new Vector3(0f, paddleTransform.position.y, paddleTransform.position.z);
+        }
+
+        void OnDestroy()
+        {
+            if (Instance != this) return;
+            Instance = null;
+            Time.timeScale = 1f;
         }
 
         public void TogglePause()
@@ -307,6 +357,9 @@ namespace Shatterline
 
         public void ResumeFromPause()
         {
+            // The release that dismisses the overlay also raises the touch tap action.
+            // Consume it even when the UI has already disappeared before Update runs.
+            launchBlockedThroughFrame = Time.frameCount + 1;
             isPaused = false;
             Time.timeScale = 1f;
             ui.ShowPauseOverlay(false);
