@@ -78,10 +78,10 @@ public class CreateGameWinScreen : EditorWindow
         layout.spacing = 20;
         layout.childControlWidth = true;
         layout.childControlHeight = false;
-        btnContainer.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitContent;
+        btnContainer.AddComponent<ContentSizeFitter>().verticalFit = (ContentSizeFitter.FitMode)1;
 
-        // Helper to create and wire buttons
-        void CreateButton(string label, string methodName)
+        // Helper to create buttons
+        void CreateButton(string label)
         {
             GameObject btnObj = new GameObject(label + "Button");
             btnObj.transform.SetParent(btnContainer.transform, false);
@@ -99,14 +99,10 @@ public class CreateGameWinScreen : EditorWindow
             btnTextRect.anchorMax = Vector2.one;
             btnTextRect.offsetMin = Vector2.zero;
             btnTextRect.offsetMax = Vector2.zero;
-
-            // Use UnityEventTools to wire the button in the editor
-            UnityEvent onClick = btn.onClick;
-            UnityEventTools.AddUnityEventlistener(onClick, new UnityEventTools.TargetFunction(uiManagerObj, methodName));
         }
 
-        CreateButton("Main Menu", "OnMenuClicked");
-        CreateButton("Start Again", "OnRetryClicked");
+        CreateButton("Main Menu");
+        CreateButton("Start Again");
 
         // Assign fields to UIManager via reflection (since they are private)
         var type = typeof(UIManager);
@@ -116,6 +112,6 @@ public class CreateGameWinScreen : EditorWindow
             ?.SetValue(uiManager, text);
 
         EditorUtility.SetDirty(uiManagerObj);
-        Debug.Log("SHATTERLINE: Game Win Screen successfully created and wired to UIManager.");
+        Debug.Log("SHATTERLINE: Game Win Screen created. IMPORTANT: Please manually assign the onClick events for the buttons to the UIManager in the Inspector.");
     }
 }
