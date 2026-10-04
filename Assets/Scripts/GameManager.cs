@@ -12,7 +12,8 @@ namespace Shatterline
         Playing,
         BallLost,
         LevelClear,
-        GameOver
+        GameOver,
+        GameWin
     }
 
     public class GameManager : MonoBehaviour
@@ -155,6 +156,10 @@ namespace Shatterline
                     AudioManager.Instance.PlayGameOver();
                     stateRoutine = StartCoroutine(GameOverLockoutRoutine());
                     break;
+                case GameState.GameWin:
+                    AudioManager.Instance.PlayLevelClear();
+                    stateRoutine = StartCoroutine(GameOverLockoutRoutine());
+                    break;
             }
         }
 
@@ -286,7 +291,10 @@ namespace Shatterline
         IEnumerator LevelClearRoutine()
         {
             yield return new WaitForSeconds(levelClearPauseSeconds);
-            LoadLevel(CurrentLevelIndex + 1);
+            if (CurrentLevelIndex + 1 < levels.Length)
+                LoadLevel(CurrentLevelIndex + 1);
+            else
+                SetState(GameState.GameWin);
         }
 
         IEnumerator GameOverLockoutRoutine()
