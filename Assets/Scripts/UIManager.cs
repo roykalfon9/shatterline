@@ -13,6 +13,7 @@ namespace Shatterline
         [SerializeField] GameObject pausePanel;
         [SerializeField] GameObject levelClearPanel;
         [SerializeField] GameObject gameOverPanel;
+        [SerializeField] GameObject gameWinPanel;
 
         [Header("HUD")]
         [SerializeField] TMP_Text scoreText;
@@ -34,12 +35,15 @@ namespace Shatterline
         [SerializeField] TMP_Text bestScoreGameOverText;
         [SerializeField] GameObject newBestTag;
 
+        [Header("Game Win")]
+        [SerializeField] TMP_Text winText;
+
         void Awake()
         {
 #if UNITY_EDITOR || UNITY_STANDALONE
-            quitButton.gameObject.SetActive(true);
+            if (quitButton != null) quitButton.gameObject.SetActive(true);
 #else
-            quitButton.gameObject.SetActive(false);
+            if (quitButton != null) quitButton.gameObject.SetActive(false);
 #endif
         }
 
@@ -57,51 +61,69 @@ namespace Shatterline
 
         public void ShowScreenFor(GameState state)
         {
+            // Null-safe panel toggling
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(state == GameState.MainMenu);
+            if (hudPanel != null) hudPanel.SetActive(state != GameState.MainMenu);
+            if (levelClearPanel != null) levelClearPanel.SetActive(state == GameState.LevelClear);
+            if (gameOverPanel != null) gameOverPanel.SetActive(state == GameState.GameOver);
+            if (gameWinPanel != null) gameWinPanel.SetActive(state == GameState.GameWin);
+            if (pausePanel != null) pausePanel.SetActive(false);
+            
             ShowLaunchHint(false);
-            mainMenuPanel.SetActive(state == GameState.MainMenu);
-            hudPanel.SetActive(state != GameState.MainMenu);
-            levelClearPanel.SetActive(state == GameState.LevelClear);
-            gameOverPanel.SetActive(state == GameState.GameOver);
-            pausePanel.SetActive(false);
-            SelectFirstButton(state == GameState.MainMenu ? mainMenuPanel : state == GameState.GameOver ? gameOverPanel : null);
 
-            if (state != GameState.Serve)
-                serveCountdownText.gameObject.SetActive(false);
+            // Focus first button
+            GameObject targetPanel = null;
+            if (state == GameState.MainMenu) targetPanel = mainMenuPanel;
+            else if (state == GameState.GameOver) targetPanel = gameOverPanel;
+            else if (state == GameState.GameWin) targetPanel = gameWinPanel;
+            SelectFirstButton(targetPanel);
 
+            // Serve countdown visibility
+            if (serveCountdownText != null)
+            {
+                serveCountdownText.gameObject.SetActive(state == GameState.Serve);
+            }
+
+            // State-specific text updates
             switch (state)
             {
                 case GameState.MainMenu:
-                    bestScoreMenuText.text = $"Best Score: {GameManager.Instance.BestScore}";
+                    if (bestScoreMenuText != null) bestScoreMenuText.text = $"Best Score: {GameManager.Instance.BestScore}";
                     break;
                 case GameState.LevelClear:
-                    levelClearText.text = $"{GameManager.Instance.CurrentLevelName.ToUpperInvariant()}\nCLEAR";
+                    if (levelClearText != null) levelClearText.text = $"{GameManager.Instance.CurrentLevelName.ToUpperInvariant()}\nCLEAR";
                     break;
                 case GameState.GameOver:
-                    finalScoreText.text = $"Score: {GameManager.Instance.Score}";
-                    bestScoreGameOverText.text = $"Best: {GameManager.Instance.BestScore}";
-                    newBestTag.SetActive(GameManager.Instance.NewBestThisRun);
+                    if (finalScoreText != null) finalScoreText.text = $"Score: {GameManager.Instance.Score}";
+                    if (bestScoreGameOverText != null) bestScoreGameOverText.text = $"Best: {GameManager.Instance.BestScore}";
+                    if (newBestTag != null) newBestTag.SetActive(GameManager.Instance.NewBestThisRun);
+                    break;
+                case GameState.GameWin:
+                    if (winText != null) winText.text = "GAME COMPLETE!";
                     break;
             }
         }
 
         public void UpdateScore(int score)
         {
-            scoreText.text = score.ToString();
+            if (scoreText != null) scoreText.text = score.ToString();
         }
 
         public void UpdateLives(int lives)
         {
+            if (lifeIcons == null) return;
             for (int i = 0; i < lifeIcons.Length; i++)
-                lifeIcons[i].gameObject.SetActive(i < lives);
+                if (lifeIcons[i] != null) lifeIcons[i].gameObject.SetActive(i < lives);
         }
 
         public void UpdateLevel(int levelNumber)
         {
-            levelText.text = $"LV {levelNumber}";
+            if (levelText != null) levelText.text = $"LV {levelNumber}";
         }
 
         public void ShowServeCountdown(int count)
         {
+            if (serveCountdownText == null) return;
             if (count <= 0)
             {
                 serveCountdownText.gameObject.SetActive(false);
@@ -113,18 +135,20 @@ namespace Shatterline
 
         public void ShowPauseOverlay(bool show)
         {
-            pausePanel.SetActive(show);
-            SelectFirstButton(show ? pausePanel : null);
+            if (pausePanel != null)
+            {
+                pausePanel.SetActive(show);
+                SelectFirstButton(show ? pausePanel : null);
+            }
         }
 
         static void SelectFirstButton(GameObject panel)
         {
-            if (EventSystem.current == null) return;
-            var button = panel != null ? panel.GetComponentInChildren<UnityEngine.UI.Button>() : null;
+            if (panel == null || EventSystem.current == null) return;
+            var button = panel.GetComponentInChildren<UnityEngine.UI.Button>();
             EventSystem.current.SetSelectedGameObject(button != null ? button.gameObject : null);
         }
 
-        // UI Button targets, wired in the scene via GameSetup.
         public void OnPlayClicked()
         {
             AudioManager.Instance.PlayClick();
